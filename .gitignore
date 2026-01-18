@@ -1,3 +1,5 @@
 analysis/
 .idea/
 model_weight/
+
+**/__pycache__/
