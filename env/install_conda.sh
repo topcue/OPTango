@@ -1,16 +1,25 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
-# https://www.anaconda.com/docs/getting-started/miniconda/install#linux-2
+# Reference: https://www.anaconda.com/docs/getting-started/miniconda/install#linux-2
 
-mkdir -p ${HOME}/miniconda3
-wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh
-bash ${HOME}/miniconda3/miniconda.sh -b -u -p ${HOME}/miniconda3
-rm ${HOME}/miniconda3/miniconda.sh
+set -e
 
-source ${HOME}/miniconda3/bin/activate
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # OPTango/env
+CONDA_DIR="${SCRIPT_DIR}/miniconda3"
+INSTALLER="${SCRIPT_DIR}/miniconda.sh"
 
-conda init --all
+echo "[*] Installing Miniconda to: ${CONDA_DIR}"
 
-conda config --set auto_activate_base false
+mkdir -p "${CONDA_DIR}"
+
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+	-O "${INSTALLER}"
+
+bash "${INSTALLER}" -b -u -p "${CONDA_DIR}"
+rm -f "${INSTALLER}"
+
+source "${CONDA_DIR}/bin/activate"
+
+echo "[*] Miniconda installation complete"
 
 # EOF

@@ -1,6 +1,9 @@
 #!/usr/bin/bash
 
-source ${HOME}/miniconda3/bin/activate
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # OPTango/env
+CONDA_DIR="${SCRIPT_DIR}/miniconda3"
+
+source ${CONDA_DIR}/bin/activate
 
 conda tos accept
 
