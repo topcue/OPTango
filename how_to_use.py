@@ -9,6 +9,7 @@ from core.opt_rm.model import OptRemoveBertModel
 from third.jTrans.data_func import gen_funcstr
 import time
 import argparse
+import contextlib
 
 
 def cos_similarity_(v1, v2):
@@ -169,6 +170,36 @@ def check_pooler_final_matches_checkpoint(
 		)
 
 
+@contextlib.contextmanager
+def suppress_transformers_warnings(level: str = 'error'):
+	"""
+	Suppress HuggingFace Transformers log messages (e.g., 'Some weights were not initialized...').
+	This does NOT change model parameters; it only reduces noisy logs for artifact reproduction runs.
+	"""
+	try:
+		from transformers.utils import logging as hf_logging
+	except Exception:
+		# Transformers not available or different layout; do nothing.
+		yield
+		return
+
+	prev_verbosity = hf_logging.get_verbosity()
+	prev_default_handler = hf_logging._default_handler
+
+	# Reduce verbosity and also disable the default handler to avoid stdout spam.
+	hf_logging.set_verbosity_error() if level == 'error' else hf_logging.set_verbosity_warning()
+	hf_logging.disable_default_handler()
+
+	try:
+		yield
+	finally:
+		# Restore previous logging state.
+		hf_logging.set_verbosity(prev_verbosity)
+		hf_logging.enable_default_handler()
+		# Some versions track handler differently; keep safe behavior.
+		hf_logging._default_handler = prev_default_handler
+
+
 class FullModel(object):
 	#! TODO: Fix path
 	def __init__(self, device="cuda:0", with_gp=True, checkpoint_dir="model_weight/"):
@@ -176,31 +207,31 @@ class FullModel(object):
 		checkpoint = torch.load(f"{checkpoint_dir}/model_release.pt", map_location=device)
 		checkpoint = remove_parallel_prefix(checkpoint)
 
-		model = OptRemoveBertModel(feat_source='opt_rm').to(device)
-
 		state = checkpoint["bert"]
 
-		# 1) Indexing-related check (position_ids is allowed; no noisy prints)
-		check_position_ids_policy(state)
+		with suppress_transformers_warnings(level='error'):
+			model = OptRemoveBertModel(feat_source='opt_rm').to(device)
 
-		# 2) Load + strict compatibility check (fail fast on missing; allow only position_ids as unexpected)
+		check_position_ids_policy(state)
 		check_state_dict_compat(model, state, require_no_missing=True, suppress_expected_unexpected=True)
 
-		# No prints if everything is fine (keep logs clean)
 		model.eval()
 		self.model_bert = model
-
-		# 3) Pooler check: ensure final pooler equals release checkpoint (otherwise fail fast)
 		check_pooler_final_matches_checkpoint(self.model_bert, state)
 
-		model = OptRemoveBertModel(feat_source='bsc', sub_modules="const_data",
-								   const_data_kwargs=dict(out_type='const_emb:add')).to(device)
+		with suppress_transformers_warnings(level='error'):
+			model = OptRemoveBertModel(
+				feat_source='bsc',
+				sub_modules='const_data',
+				const_data_kwargs=dict(out_type='const_emb:add'),
+			).to(device)
 		model.load_state_dict(checkpoint["const"])
 		model.eval()
 		self.model_const_data = model
 
 		if with_gp:
-			model = OptRemoveBertModel(feat_source='bsc', sub_modules='group_pred').to(device)
+			with suppress_transformers_warnings(level='error'):
+				model = OptRemoveBertModel(feat_source='bsc', sub_modules='group_pred').to(device)
 			model.load_state_dict(checkpoint["group_pred"])
 			model.eval()
 			self.model_group_pred = model
