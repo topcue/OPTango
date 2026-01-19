@@ -1,6 +1,6 @@
 analysis/
 .idea/
-model_weight/
+model_weight
 
 env/preprocessed
 
