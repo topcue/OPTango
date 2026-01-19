@@ -2,6 +2,7 @@ analysis/
 .idea/
 model_weight
 
+env/miniconda3/
 env/preprocessed
 
 **/__pycache__/
