@@ -2,4 +2,6 @@ analysis/
 .idea/
 model_weight/
 
+env/preprocessed
+
 **/__pycache__/
