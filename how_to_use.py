@@ -90,12 +90,44 @@ class FunctionEmbeddingSet(object):
 
 
 class FullModel(object):
+	#! TODO: Fix path
 	def __init__(self, device="cuda:0", with_gp=True, checkpoint_dir="model_weight/"):
+	#def __init__(self, device="cuda:0", with_gp=True, checkpoint_dir="env/preprocessed/model_weight"):
 		checkpoint = torch.load(f"{checkpoint_dir}/model_release.pt", map_location=device)
 		checkpoint = remove_parallel_prefix(checkpoint)
 
 		model = OptRemoveBertModel(feat_source='opt_rm').to(device)
-		model.load_state_dict(checkpoint["bert"])
+
+		state = checkpoint["bert"]
+		missing, unexpected = model.load_state_dict(state, strict=False)
+
+		# Rationale:
+		# - `missing` means the current model expects some parameters/buffers that are NOT present in the checkpoint.
+		#   Those items would remain randomly initialized (or default-initialized), which can change the model behavior
+		#   and break artifact reproducibility. Therefore, we fail fast when `missing` is non-empty.
+		# - `unexpected` means the checkpoint contains keys that the current model does NOT use.
+		#   These keys are ignored by `load_state_dict` and do not affect inference, especially when they are non-trainable
+		#   helper buffers (e.g., position_ids). Therefore, we can safely proceed while logging them for traceability.
+
+		print(f"[*] missing: {missing}")
+		print(f"[*] unexpected: {unexpected}")
+		print(f"[*] has position_ids: {"bert.embeddings.position_ids" in state}")
+
+		if len(missing) > 0:
+			# Fail fast for reproducibility: missing keys imply the loaded model is not the trained one.
+			raise RuntimeError(
+				"Checkpoint/model mismatch: missing keys while loading state_dict.\n"
+				f"Missing keys ({len(missing)}): {missing}\n"
+				"This indicates some expected parameters/buffers were not loaded and may remain randomly initialized, "
+				"which can affect inference and invalidate artifact reproducibility."
+			)
+
+		# For unexpected keys, proceed but keep a log (useful when comparing checkpoints/versions).
+		if len(unexpected) > 0:
+			# Note: unexpected keys are ignored by the current model definition and do not change model outputs.
+			# Still, we print them to make the environment/model-code differences explicit.
+			pass
+
 		model.eval()
 		self.model_bert = model
 
