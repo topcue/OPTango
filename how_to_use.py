@@ -89,6 +89,86 @@ class FunctionEmbeddingSet(object):
 		return len(self.all_func_names)
 
 
+def _fail(msg: str) -> None:
+	"""Fail fast for artifact reproducibility."""
+	raise RuntimeError(msg)
+
+
+def check_state_dict_compat(
+	model: torch.nn.Module,
+	state: dict,
+	*,
+	require_no_missing: bool = True,
+	suppress_expected_unexpected: bool = True,
+) -> None:
+	"""
+	Validate checkpoint compatibility.
+
+	Policy:
+	- Any `missing` keys => fail fast (random/default init would break reproducibility).
+	- `unexpected` keys are usually safe, but we optionally allow only a known-safe set.
+	"""
+	missing, unexpected = model.load_state_dict(state, strict=False)
+
+	allowed_unexpected = {'bert.embeddings.position_ids'} if suppress_expected_unexpected else set()
+	unexpected_set = set(unexpected)
+	unexpected_bad = sorted(unexpected_set - allowed_unexpected)
+
+	if require_no_missing and len(missing) > 0:
+		_fail(
+			"Checkpoint/model mismatch: missing keys while loading state_dict.\n"
+			f"Missing keys ({len(missing)}): {missing}\n"
+			"Missing keys mean some expected parameters/buffers were not loaded and may remain randomly initialized, "
+			"which can change inference and break artifact reproducibility."
+		)
+
+	if len(unexpected_bad) > 0:
+		_fail(
+			"Checkpoint/model mismatch: unexpected keys not in allowlist.\n"
+			f"Unexpected keys ({len(unexpected_bad)}): {unexpected_bad}\n"
+			"If these are not known-safe non-trainable buffers, they may indicate a model-definition mismatch."
+		)
+
+
+def check_position_ids_policy(state: dict) -> None:
+	"""
+	Position-id buffer policy for reproducibility.
+	- Presence in checkpoint is OK; some HF/BERT variants serialize it, some don't.
+	- We do NOT fail on its presence. We only use this for cleanliness and to avoid noisy logs.
+	"""
+	# Known-safe helper buffer; no action needed.
+	_ = ('bert.embeddings.position_ids' in state)
+
+
+def check_pooler_final_matches_checkpoint(
+	model_bert: torch.nn.Module,
+	state: dict,
+) -> None:
+	"""
+	Ensure the final in-memory pooler weights used for inference match the release checkpoint.
+	This guarantees the earlier `from_pretrained(...)` warning does not affect final inference.
+	"""
+	sd = model_bert.state_dict()
+
+	required = ['bert.pooler.dense.weight', 'bert.pooler.dense.bias']
+	for k in required:
+		if k not in sd:
+			_fail(f"Pooler sanity check failed: '{k}' missing from final model state_dict.")
+		if k not in state:
+			_fail(f"Pooler sanity check failed: '{k}' missing from release checkpoint state_dict.")
+
+	# Compare exact tensors (CPU to avoid device mismatch).
+	w_ok = torch.allclose(sd['bert.pooler.dense.weight'].cpu(), state['bert.pooler.dense.weight'].cpu())
+	b_ok = torch.allclose(sd['bert.pooler.dense.bias'].cpu(), state['bert.pooler.dense.bias'].cpu())
+
+	if not (w_ok and b_ok):
+		_fail(
+			"Pooler sanity check failed: final pooler params do not match the release checkpoint.\n"
+			f"weight_match={w_ok}, bias_match={b_ok}\n"
+			"This can affect embeddings because OPTango uses output.pooler_output as fn_embeddings."
+		)
+
+
 class FullModel(object):
 	#! TODO: Fix path
 	def __init__(self, device="cuda:0", with_gp=True, checkpoint_dir="model_weight/"):
@@ -99,37 +179,19 @@ class FullModel(object):
 		model = OptRemoveBertModel(feat_source='opt_rm').to(device)
 
 		state = checkpoint["bert"]
-		missing, unexpected = model.load_state_dict(state, strict=False)
 
-		# Rationale:
-		# - `missing` means the current model expects some parameters/buffers that are NOT present in the checkpoint.
-		#   Those items would remain randomly initialized (or default-initialized), which can change the model behavior
-		#   and break artifact reproducibility. Therefore, we fail fast when `missing` is non-empty.
-		# - `unexpected` means the checkpoint contains keys that the current model does NOT use.
-		#   These keys are ignored by `load_state_dict` and do not affect inference, especially when they are non-trainable
-		#   helper buffers (e.g., position_ids). Therefore, we can safely proceed while logging them for traceability.
+		# 1) Indexing-related check (position_ids is allowed; no noisy prints)
+		check_position_ids_policy(state)
 
-		print(f"[*] missing: {missing}")
-		print(f"[*] unexpected: {unexpected}")
-		print(f"[*] has position_ids: {"bert.embeddings.position_ids" in state}")
+		# 2) Load + strict compatibility check (fail fast on missing; allow only position_ids as unexpected)
+		check_state_dict_compat(model, state, require_no_missing=True, suppress_expected_unexpected=True)
 
-		if len(missing) > 0:
-			# Fail fast for reproducibility: missing keys imply the loaded model is not the trained one.
-			raise RuntimeError(
-				"Checkpoint/model mismatch: missing keys while loading state_dict.\n"
-				f"Missing keys ({len(missing)}): {missing}\n"
-				"This indicates some expected parameters/buffers were not loaded and may remain randomly initialized, "
-				"which can affect inference and invalidate artifact reproducibility."
-			)
-
-		# For unexpected keys, proceed but keep a log (useful when comparing checkpoints/versions).
-		if len(unexpected) > 0:
-			# Note: unexpected keys are ignored by the current model definition and do not change model outputs.
-			# Still, we print them to make the environment/model-code differences explicit.
-			pass
-
+		# No prints if everything is fine (keep logs clean)
 		model.eval()
 		self.model_bert = model
+
+		# 3) Pooler check: ensure final pooler equals release checkpoint (otherwise fail fast)
+		check_pooler_final_matches_checkpoint(self.model_bert, state)
 
 		model = OptRemoveBertModel(feat_source='bsc', sub_modules="const_data",
 								   const_data_kwargs=dict(out_type='const_emb:add')).to(device)
