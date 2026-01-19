@@ -1,8 +1,9 @@
 charset-normalizer
-transformers
 einops
 simpletransformers
 networkx
 pyelftools
 pandas
 tqdm
+transformers==4.40.0
+
