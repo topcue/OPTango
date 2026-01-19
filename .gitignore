@@ -1,8 +1,8 @@
-analysis/
-.idea/
+analysis
+.idea
 model_weight
 
-env/miniconda3/
+env/miniconda3
 env/preprocessed
 
-**/__pycache__/
+**/__pycache__
