@@ -4,5 +4,6 @@ model_weight
 
 env/miniconda3
 env/preprocessed
+env/wsl_venv
 
 **/__pycache__
