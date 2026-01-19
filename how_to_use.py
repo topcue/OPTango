@@ -1,6 +1,5 @@
 import os
 import pickle
-from collections import defaultdict
 from tqdm import tqdm
 
 import torch
@@ -10,7 +9,12 @@ from third.jTrans.data_func import gen_funcstr
 import time
 import argparse
 
-from handle_warning import suppress_transformers_warnings, check_position_ids_policy, check_state_dict_compat, check_pooler_final_matches_checkpoint
+from handle_warning import (
+    suppress_transformers_warnings,
+	check_position_ids_policy,
+	check_state_dict_compat,
+	check_pooler_final_matches_checkpoint
+)
 
 
 def cos_similarity_(v1, v2):
