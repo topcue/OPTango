@@ -33,7 +33,7 @@ class DatasetBase(object):
                     for filter in self.prefixfilter:
                         if dir.startswith(filter):
                             for file in os.listdir(os.path.join(root, dir)):
-                                yield dir, file, os.path.join(root, dir, file)          
+                                yield dir, file, os.path.join(root, dir, file)
 
     def load_pickle(self, file):
         with open(file, 'rb') as f:
@@ -44,7 +44,7 @@ class DatasetBase(object):
             if filename != 'saved_index.pkl':
                 pickle_data = self.load_pickle(pkl_path)
                 self.unpaired[proj].append(pickle_data)
-    
+
     def load_pair_data(self):
         if self.opt is None:
             for proj, filename, pkl_path in self.traverse_file():
@@ -60,7 +60,7 @@ class DatasetBase(object):
                     print(filename)
                     pickle_data = self.load_pickle(pkl_path)
                     self.paired[proj][opt] = pickle_data
-    
+
     def get_paired_data_iter(self):
         proj2pickle = defaultdict(defaultdict)
         for proj, filename, pkl_path in self.traverse_file():
@@ -85,7 +85,7 @@ class DatasetBase(object):
                     ret_func_data[opt] = pkl[func_name]
                 yield proj, func_name, ret_func_data
 
-                    
+
     def get_unpaird_data_iter(self):
         for proj, filename, pkl_path in self.traverse_file():
             if filename != 'saved_index.pkl':
@@ -147,12 +147,12 @@ class DataBaseCrossCompiler(DatasetBase):
             print("opt is None")
             exit(1)
 
-    def get_paired_data(self): 
-        # return proj, func_name, ret_func_data 
+    def get_paired_data(self):
+        # return proj, func_name, ret_func_data
         # ret_func_data = {
         #                   opt: {
-        #                           compiler : (func_addr, asm_list, rawbytes_list, cfg, biai_featrue) 
-        #                        } 
+        #                           compiler : (func_addr, asm_list, rawbytes_list, cfg, biai_featrue)
+        #                        }
         #                  }
         if self.opt is not None:
             for proj, pkl_dict in self.paired.items():
@@ -189,7 +189,7 @@ if __name__ == '__main__':
         pass
 
     # demo for contrastive learning dataset in different optimization level
-    dataset = DatasetBase('../datautils2/extract', ["arenatracker-git-ArenaTracker"], False, ['O0', 'O1'])
+    dataset = DatasetBase('./extract', ["arenatracker-git-ArenaTracker"], False, ['O0', 'O1'])
     dataset.load_pair_data()
     ft_dataset = dataset.get_paired_data()
     for proj, func_name, func_data in ft_dataset:
@@ -197,7 +197,7 @@ if __name__ == '__main__':
             func_addr, asm_list, rawbytes_list, cfg, biai_featrue = func_data[opt]
             print(func_name, hex(func_addr))
 
-    # demo for cross compiler dataset 
+    # demo for cross compiler dataset
     dataset = DataBaseCrossCompiler('../extractDataset/coreutils', ["coreutils-b2sum"], False, ['O0', 'Os'])
     dataset.load_pair_data()
     cnt = 0
