@@ -6,5 +6,6 @@ env/miniconda3
 env/preprocessed
 env/wsl_venv
 third/jTrans_vul337
+third/jTrans_my
 
 **/__pycache__
