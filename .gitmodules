@@ -1,3 +1,5 @@
 [submodule "third/jTrans"]
 	path = third/jTrans
 	url = https://github.com/topcue/jTrans.git
+[submodule "jTrans"]
+	branch = main
