@@ -3,7 +3,7 @@ import time
 import subprocess
 import multiprocessing
 from tqdm import tqdm
-# from util.pairdata import pairdata
+from util.pairdata import pairdata
 
 from my_config import wsl_to_win_path, run_ida
 from my_config import (
@@ -99,7 +99,7 @@ def main():
 
     print("[*] Features Extracting Done")
     print("[*] Saving..")
-    # pairdata(SAVE_ROOT)
+    pairdata(SAVE_ROOT)
 
     end = time.time()
     print(f"[*] Time Cost: {end - start} seconds")

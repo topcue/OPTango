@@ -1,3 +1,5 @@
+#! for optango
+
 # add by hng for support third invoke
 import os
 import sys
@@ -6,7 +8,7 @@ import warnings
 path = os.path.split(__file__)[0]
 if path not in sys.path:
     sys.path.insert(0, path)
-import readidadata
+import third.jTrans.readidadata_optango as readidadata_optango
 
 MAXLEN = 512
 
@@ -38,11 +40,11 @@ def gen_funcstr_from_r2asm(func, convert_jump, parse_kwargs={}, with_info=False)
     for inst in func.insts:
         code = (inst.op + " " + ",".join(inst.args)).strip()
         if with_info:
-            operator, operand1, operand2, operand3, annotation, inst_info = readidadata.parse_asm(
+            operator, operand1, operand2, operand3, annotation, inst_info = readidadata_optango.parse_asm(
                 code, parse_kwargs, with_info=True)
             record_const([operator, operand1, operand2, operand3], len(code_lst), inst_info, info)
         else:
-            operator, operand1, operand2, operand3, annotation = readidadata.parse_asm(code, parse_kwargs)
+            operator, operand1, operand2, operand3, annotation = readidadata_optango.parse_asm(code, parse_kwargs)
         map_id[inst.addr()] = len(code_lst)
         code_lst.append(operator)
         if operand1 != None:
@@ -100,11 +102,11 @@ def gen_funcstr_x86(f, convert_jump, parse_kwargs={}, with_info=False, arch=""):
         map_id[bb] = len(code_lst)
         for code in asm:
             if with_info:
-                operator, operand1, operand2, operand3, annotation, inst_info = readidadata.parse_asm(
+                operator, operand1, operand2, operand3, annotation, inst_info = readidadata_optango.parse_asm(
                     code, parse_kwargs, with_info=True)
                 record_const([operator, operand1, operand2, operand3], len(code_lst), inst_info, info)
             else:
-                operator, operand1, operand2, operand3, annotation = readidadata.parse_asm(code, parse_kwargs)
+                operator, operand1, operand2, operand3, annotation = readidadata_optango.parse_asm(code, parse_kwargs)
             code_lst.append(operator)
             if operand1 != None:
                 code_lst.append(operand1)
