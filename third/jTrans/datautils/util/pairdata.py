@@ -25,6 +25,7 @@ def pairdata(data_dir):
     #    - Only consider *_extract.pkl
     #    - Explicitly exclude saved_index.pkl
     for root, _, files in os.walk(data_dir):
+        files.sort()  # ensure stable file traversal order
         for name in files:
             if not name.endswith("_extract.pkl"):
                 continue
@@ -32,7 +33,9 @@ def pairdata(data_dir):
             proj2paths[prefix].append(os.path.join(root, name))
 
     # 2) Process each project independently
-    for proj, paths in proj2paths.items():
+    for proj, paths in sorted(proj2paths.items()):  # stable project order
+        paths = sorted(paths)  # stable per-project path order
+
         proj_dir = os.path.join(data_dir, proj)
         os.makedirs(proj_dir, exist_ok=True)
 
@@ -75,7 +78,7 @@ def pairdata(data_dir):
         # 4) Build paired data:
         #    func_name -> [value_from_pkl1, value_from_pkl2, ...]
         saved_index = defaultdict(list)
-        for func_name in final_index:
+        for func_name in sorted(final_index):  # stable key insertion order
             for pkl in pkl_list:
                 saved_index[func_name].append(pkl[func_name])
 
