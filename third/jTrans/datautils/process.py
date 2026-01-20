@@ -1,9 +1,6 @@
-import sys
+from my_config import setup_ida_sys_path
 
-sys.path.insert(0, r"C:\Users\user\workspace\IDA-python\optango\Lib")
-sys.path.insert(0, r"C:\Users\user\workspace\IDA-python\optango\libs")
-sys.path.insert(0, r"C:\Users\user\workspace\IDA-python\optango")
-sys.path.insert(0, r"C:\Users\user\workspace\IDA-python\optango\Lib\site-packages")
+setup_ida_sys_path()
 
 #! =============================================================================
 
@@ -18,30 +15,10 @@ import binaryai
 import networkx as nx
 from util.base import Binarybase
 
-WSL_PREFIX = "/home/user/win_workspace"
-WIN_PREFIX = "C:/Users/user/workspace"
-
-def wsl_to_win_path(p):
-    if p == WSL_PREFIX or p.startswith(WSL_PREFIX + "/"):
-        return WIN_PREFIX + p[len(WSL_PREFIX):]
-    return p
-
-def win_to_wsl_path(p):
-    if p == WIN_PREFIX or p.startswith(WIN_PREFIX + "/"):
-        return WSL_PREFIX + p[len(WIN_PREFIX):]
-    return p
-
-# SAVEROOT = "./extract" # dir of pickle files saved by IDA
-# DATAROOT = "./dataset" # dir of binaries (not stripped)
-
-BASE_PATH = "/home/user/win_workspace/storage/optango"
-
-DATA_ROOT = os.path.join(BASE_PATH, "dataset")
-DATA_ROOT_WIN = wsl_to_win_path(DATA_ROOT)
-
-SAVE_ROOT = os.path.join(BASE_PATH, "extract")
-SAVE_ROOT_WIN = wsl_to_win_path(SAVE_ROOT)
-
+from my_config import (
+    DATA_ROOT_WIN,
+    SAVE_ROOT_WIN,
+)
 
 class BinaryData(Binarybase):
     def __init__(self, unstrip_path):
@@ -138,7 +115,6 @@ def main():
 
     if DEBUG:
         print(f"[DEBUG] DATA_ROOT_WIN: {DATA_ROOT_WIN}")
-        print(f"[DEBUG] DATA_ROOT: {DATA_ROOT}")
         print(f"[DEBUG] filename: {filename}")
         print(f"[DEBUG] unstrip_path: {unstrip_path}")
     
