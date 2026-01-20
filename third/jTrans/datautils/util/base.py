@@ -1,7 +1,3 @@
-"""
-this file not use ida api, with used to obtain the map from function addr to function name
-"""
-
 from elftools.elf.elffile import ELFFile
 import elftools.elf.elffile as elffile
 from elftools.elf.sections import SymbolTableSection
@@ -53,3 +49,4 @@ class Binarybase(object):
             addr2name = {func['begin']: name for (name, func) in functions.items()}
         return defaultdict(lambda:-1, addr2name)
 
+# EOF
